@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.project3.mapper.EmployeeMapper">
+
+    <!-- 직원 전체 건수 조회 -->
+    <select id="countAll" resultType="long">
+
+        SELECT COUNT(*)
+        FROM employees
+
+    </select>
+
+    <!-- 직원 전체 조회 -->
+    <select id="findAll"
+            resultType="com.example.project3.domain.Employee">
+
+        SELECT
+        employee_id,
+        employee_name,
+        department
+        FROM employees
+        ORDER BY employee_id ASC
+
+    </select>
+
+    <!-- 직원 상세 조회 -->
+    <select id="findById"
+            resultType="com.example.project3.domain.Employee">
+
+        SELECT
+        employee_id,
+        employee_name,
+        department
+        FROM employees
+        WHERE employee_id = #{employeeId}
+
+    </select>
+</mapper>

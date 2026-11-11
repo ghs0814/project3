@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.project3.mapper.LeaveRequestMapper">
+
+    <!-- 1. 공통 검색 조건 -->
+    <sql id="searchConditions">
+
+        <where>
+
+            <if test="employeeId != null">
+                AND lr.employee_id = #{employeeId}
+            </if>
+
+            <if test="approverId != null">
+                AND lr.approver_id = #{approverId}
+            </if>
+
+            <if test="status != null and status != ''">
+                AND lr.status = #{status}
+            </if>
+
+        </where>
+
+    </sql>
+
+    <!-- 2. 휴가 신청 등록 -->
+    <insert id="insert"
+            parameterType="com.example.project3.domain.LeaveRequest"
+            useGeneratedKeys="true"
+            keyProperty="requestId"
+            keyColumn="request_id">
+
+        INSERT INTO leave_requests (
+        employee_id,
+        approver_id,
+        start_date,
+        end_date,
+        reason
+        )
+        VALUES (
+        #{employeeId},
+        #{approverId},
+        #{startDate},
+        #{endDate},
+        #{reason}
+        )
+
+    </insert>
+
+    <!-- 3. 휴가 신청 단일 테이블 조회 -->
+    <select id="findById"
+            resultType="com.example.project3.domain.LeaveRequest">
+
+        SELECT
+        request_id,
+        employee_id,
+        approver_id,
+        start_date,
+        end_date,
+        reason,
+        status,
+        created_at,
+        decided_at,
+        rejection_comment
+        FROM leave_requests
+        WHERE request_id = #{requestId}
+
+    </select>
+
+    <!-- 4. 변경: 휴가 목록 검색 + 페이징 -->
+    <select id="findAllWithDetails"
+            parameterType="com.example.project3.dto.LeaveSearchConditionDto"
+            resultType="com.example.project3.dto.LeaveDetailResponseDto">
+
+        SELECT
+        lr.request_id,
+
+        lr.employee_id,
+        e.employee_name AS applicant_name,
+        e.department AS applicant_department,
+
+        lr.approver_id,
+        a.employee_name AS approver_name,
+        a.department AS approver_department,
+
+        lr.start_date,
+        lr.end_date,
+        lr.reason,
+        lr.status,
+        lr.created_at,
+        lr.decided_at,
+        lr.rejection_comment
+
+        FROM leave_requests lr
+
+        INNER JOIN employees e
+        ON lr.employee_id = e.employee_id
+
+        INNER JOIN employees a
+        ON lr.approver_id = a.employee_id
+
+        <include refid="searchConditions"/>
+
+        <choose>
+
+            <when test="sort == 'oldest'">
+                ORDER BY lr.created_at ASC, lr.request_id ASC
+            </when>
+
+            <otherwise>
+                ORDER BY lr.created_at DESC, lr.request_id DESC
+            </otherwise>
+
+        </choose>
+
+        LIMIT #{size}
+        OFFSET #{offset}
+
+    </select>
+
+    <!-- 5. 신규: 검색 결과 전체 건수 -->
+    <select id="countByCondition"
+            parameterType="com.example.project3.dto.LeaveSearchConditionDto"
+            resultType="long">
+
+        SELECT COUNT(*)
+        FROM leave_requests lr
+
+        <include refid="searchConditions"/>
+
+    </select>
+
+    <!-- 6. 휴가 상세 JOIN 조회 -->
+    <select id="findDetailById"
+            resultType="com.example.project3.dto.LeaveDetailResponseDto">
+
+        SELECT
+        lr.request_id,
+
+        lr.employee_id,
+        e.employee_name AS applicant_name,
+        e.department AS applicant_department,
+
+        lr.approver_id,
+        a.employee_name AS approver_name,
+        a.department AS approver_department,
+
+        lr.start_date,
+        lr.end_date,
+        lr.reason,
+        lr.status,
+        lr.created_at,
+        lr.decided_at,
+        lr.rejection_comment
+
+        FROM leave_requests lr
+
+        INNER JOIN employees e
+        ON lr.employee_id = e.employee_id
+
+        INNER JOIN employees a
+        ON lr.approver_id = a.employee_id
+
+        WHERE lr.request_id = #{requestId}
+
+    </select>
+
+    <!-- 7. 휴가 기간 중복 검사 -->
+    <select id="existsOverlapping"
+            resultType="boolean">
+
+        SELECT EXISTS (
+        SELECT 1
+        FROM leave_requests
+        WHERE employee_id = #{employeeId}
+        AND status IN ('PENDING', 'APPROVED')
+        AND start_date &lt;= #{endDate}
+        AND end_date &gt;= #{startDate}
+        )
+
+    </select>
+
+    <!-- 8. 휴가 승인 -->
+    <update id="approve">
+
+        UPDATE leave_requests
+        SET status = 'APPROVED',
+        decided_at = CURRENT_TIMESTAMP
+        WHERE request_id = #{requestId}
+        AND approver_id = #{approverId}
+        AND status = 'PENDING'
+
+    </update>
+
+    <!-- 9. 휴가 반려 -->
+    <update id="reject">
+
+        UPDATE leave_requests
+        SET status = 'REJECTED',
+        decided_at = CURRENT_TIMESTAMP,
+        rejection_comment = #{comment}
+        WHERE request_id = #{requestId}
+        AND approver_id = #{approverId}
+        AND status = 'PENDING'
+
+    </update>
+
+    <!-- 10. 휴가 신청 취소 -->
+    <update id="cancel">
+
+        UPDATE leave_requests
+        SET status = 'CANCELED',
+        decided_at = NULL,
+        rejection_comment = NULL
+        WHERE request_id = #{requestId}
+        AND employee_id = #{employeeId}
+        AND status = 'PENDING'
+
+    </update>
+
+</mapper>

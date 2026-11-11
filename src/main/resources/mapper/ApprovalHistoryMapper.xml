@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.example.project3.mapper.ApprovalHistoryMapper">
+
+    <!-- 1. 처리 이력 등록 -->
+    <insert id="insert"
+            parameterType="com.example.project3.domain.ApprovalHistory"
+            useGeneratedKeys="true"
+            keyProperty="historyId"
+            keyColumn="history_id">
+
+        INSERT INTO approval_history (
+        request_id,
+        actor_employee_id,
+        action,
+        comment
+        )
+        VALUES (
+        #{requestId},
+        #{actorEmployeeId},
+        #{action},
+        #{comment}
+        )
+
+    </insert>
+
+    <!-- 2. 휴가 신청별 처리 이력 조회 -->
+    <select id="findByRequestId"
+            resultType="com.example.project3.dto.ApprovalHistoryResponseDto">
+
+        SELECT
+        ah.history_id,
+        ah.request_id,
+        ah.actor_employee_id,
+
+        e.employee_name AS actor_name,
+        e.department AS actor_department,
+
+        ah.action,
+        ah.comment,
+        ah.acted_at
+
+        FROM approval_history ah
+
+        INNER JOIN employees e
+        ON ah.actor_employee_id = e.employee_id
+
+        WHERE ah.request_id = #{requestId}
+
+        ORDER BY
+        ah.acted_at ASC,
+        ah.history_id ASC
+
+    </select>
+
+</mapper>
